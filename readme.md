@@ -8,3 +8,6 @@ Pour commencer, utilisez :
 - main_test_mqtt : envoi un message de test sur votre broker (HA)
 - main_test_capteur : qui test les capteurs I2C
 - main : programme principal
+
+Ce projet a été réalisé avec l'aide de l'IA (claude notament) on trouvera les résumés dans Docs/
+pour l'instant (01/04/2026) main n'a pas été testé !
