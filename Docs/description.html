@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schéma de câblage T-A7670E</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1976D2;
+            margin-top: 30px;
+        }
+        .wiring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .wiring-table th {
+            background: #2196F3;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        .wiring-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .wiring-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        .module {
+            background: #E3F2FD;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .pin {
+            background: #FFF3E0;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .warning {
+            background: #FFF3CD;
+            border-left: 4px solid #FFC107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .note {
+            background: #E8F5E9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .power-section {
+            background: #FFEBEE;
+            border: 2px solid #F44336;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            background: white;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 Schéma de câblage complet - Système de surveillance LTE-M</h1>
+
+        <div class="power-section">
+            <h2>⚡ Alimentation</h2>
+            <p><strong>Important :</strong> Le T-A7670E nécessite une alimentation 5V stable avec au moins 2A de capacité (pics jusqu'à 2A lors des transmissions LTE-M).</p>
+            <ul>
+                <li><strong>Alimentation principale :</strong> 220V AC → Adaptateur 5V/3A → T-A7670E (USB-C ou pin 5V)</li>
+                <li><strong>Batterie de secours :</strong> Batterie LiPo 3.7V connectée au connecteur JST du module</li>
+                <li><strong>Détection 220V :</strong> Optocoupler PC817 + pont diviseur</li>
+            </ul>
+        </div>
+
+        <h2>🔌 Tableau de connexions</h2>
+
+        <h3>1. Capteur TSL2561 (Lumière) - I2C</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>TSL2561</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">VCC</span></td>
+                <td><span class="pin">3.3V</span></td>
+                <td>Alimentation 3.3V</td>
+            </tr>
+            <tr>
+                <td><span class="pin">GND</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+            <tr>
+                <td><span class="pin">SDA</span></td>
+                <td><span class="pin">GPIO 21</span></td>
+                <td>I2C Data</td>
+            </tr>
+            <tr>
+                <td><span class="pin">SCL</span></td>
+                <td><span class="pin">GPIO 22</span></td>
+                <td>I2C Clock</td>
+            </tr>
+        </table>
+
+        <h3>2. BME280 (Température/Humidité/Pression) - I2C</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>BME280</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">VCC</span></td>
+                <td><span class="pin">3.3V</span></td>
+                <td>Alimentation 3.3V</td>
+            </tr>
+            <tr>
+                <td><span class="pin">GND</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+            <tr>
+                <td><span class="pin">SDA</span></td>
+                <td><span class="pin">GPIO 21</span></td>
+                <td>I2C Data (partagé avec TSL2561)</td>
+            </tr>
+            <tr>
+                <td><span class="pin">SCL</span></td>
+                <td><span class="pin">GPIO 22</span></td>
+                <td>I2C Clock (partagé avec TSL2561)</td>
+            </tr>
+        </table>
+
+        <h3>3. PIR HC-SR501 (Détecteur de mouvement)</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>HC-SR501</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">VCC</span></td>
+                <td><span class="pin">5V</span></td>
+                <td>Alimentation 5V</td>
+            </tr>
+            <tr>
+                <td><span class="pin">GND</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+            <tr>
+                <td><span class="pin">OUT</span></td>
+                <td><span class="pin">GPIO 14</span></td>
+                <td>Signal de détection (3.3V compatible)</td>
+            </tr>
+        </table>
+
+        <h3>4. PZEM-004T v3.0 (Compteur électrique)</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>PZEM-004T</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">5V</span></td>
+                <td><span class="pin">5V</span></td>
+                <td>Alimentation 5V</td>
+            </tr>
+            <tr>
+                <td><span class="pin">GND</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+            <tr>
+                <td><span class="pin">TX</span></td>
+                <td><span class="pin">GPIO 16 (RX2)</span></td>
+                <td>UART TX → RX ESP32</td>
+            </tr>
+            <tr>
+                <td><span class="pin">RX</span></td>
+                <td><span class="pin">GPIO 17 (TX2)</span></td>
+                <td>UART RX ← TX ESP32</td>
+            </tr>
+        </table>
+
+        <h3>5. Détecteur incendie (contact sec)</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>Détecteur</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">NC/NO</span></td>
+                <td><span class="pin">GPIO 13</span></td>
+                <td>Contact via résistance pull-up 10kΩ</td>
+            </tr>
+            <tr>
+                <td><span class="pin">Commun</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+        </table>
+
+        <h3>6. Interrupteur mode alarme</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>Interrupteur</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">Pin 1</span></td>
+                <td><span class="pin">GPIO 12</span></td>
+                <td>Via résistance pull-up 10kΩ</td>
+            </tr>
+            <tr>
+                <td><span class="pin">Pin 2</span></td>
+                <td><span class="pin">GND</span></td>
+                <td>Masse</td>
+            </tr>
+        </table>
+
+        <h3>7. Détection présence 220V</h3>
+        <table class="wiring-table">
+            <tr>
+                <th>Circuit</th>
+                <th>T-A7670E</th>
+                <th>Description</th>
+            </tr>
+            <tr>
+                <td><span class="pin">Optocoupler OUT</span></td>
+                <td><span class="pin">GPIO 15</span></td>
+                <td>Signal 3.3V quand 220V présent</td>
+            </tr>
+        </table>
+
+        <div class="warning">
+            <strong>⚠️ ATTENTION - SÉCURITÉ 220V</strong>
+            <p>Le circuit de détection 220V doit être réalisé par une personne qualifiée. Utilisez un optocoupler PC817 avec isolation galvanique complète. Ne connectez JAMAIS directement du 220V à l'ESP32 !</p>
+        </div>
+
+        <h2>🔧 Circuit de détection 220V (détails)</h2>
+        <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px;">
+220V AC ──┬── Fusible 100mA
+          │
+          ├── Résistance 100kΩ (2W)
+          │
+          ├── Pont diviseur 470kΩ
+          │
+          ├──[LED PC817]── Résistance 1kΩ ── GND
+          │
+          └── Résistance 470kΩ ── GND
+
+PC817 Transistor:
+    Collecteur ── 3.3V via 10kΩ
+    Émetteur ── GND
+    Signal ────── GPIO 15
+        </pre>
+
+        <div class="note">
+            <strong>💡 Notes importantes</strong>
+            <ul>
+                <li>Les capteurs I2C (TSL2561 et BME280) partagent le même bus I2C</li>
+                <li>Utilisez des résistances pull-up 4.7kΩ sur SDA et SCL si non intégrées</li>
+                <li>Le PZEM-004T utilise UART Serial2 (distinct du modem qui utilise Serial1)</li>
+                <li>Tous les GND doivent être reliés ensemble</li>
+                <li>Prévoir des condensateurs 100nF sur chaque VCC proche des capteurs</li>
+                <li>Câbles I2C courts (< 30cm) pour éviter les interférences</li>
+            </ul>
+        </div>
+
+        <h2>📋 Résumé des GPIO utilisés</h2>
+        <table class="wiring-table">
+            <tr>
+                <th>GPIO</th>
+                <th>Fonction</th>
+                <th>Type</th>
+            </tr>
+            <tr><td><span class="pin">GPIO 12</span></td><td>Interrupteur mode alarme</td><td>INPUT_PULLUP</td></tr>
+            <tr><td><span class="pin">GPIO 13</span></td><td>Détecteur incendie</td><td>INPUT_PULLUP</td></tr>
+            <tr><td><span class="pin">GPIO 14</span></td><td>PIR HC-SR501</td><td>INPUT</td></tr>
+            <tr><td><span class="pin">GPIO 15</span></td><td>Détection 220V</td><td>INPUT</td></tr>
+            <tr><td><span class="pin">GPIO 16</span></td><td>PZEM RX (Serial2)</td><td>UART</td></tr>
+            <tr><td><span class="pin">GPIO 17</span></td><td>PZEM TX (Serial2)</td><td>UART</td></tr>
+            <tr><td><span class="pin">GPIO 21</span></td><td>I2C SDA</td><td>I2C</td></tr>
+            <tr><td><span class="pin">GPIO 22</span></td><td>I2C SCL</td><td>I2C</td></tr>
+            <tr><td><span class="pin">GPIO 26</span></td><td>Modem RX</td><td>UART (Modem)</td></tr>
+            <tr><td><span class="pin">GPIO 27</span></td><td>Modem TX</td><td>UART (Modem)</td></tr>
+            <tr><td><span class="pin">GPIO 4</span></td><td>Modem PWRKEY</td><td>OUTPUT (Modem)</td></tr>
+            <tr><td><span class="pin">GPIO 32</span></td><td>Modem DTR</td><td>OUTPUT (Modem)</td></tr>
+        </table>
+
+        <h2>🔋 Alimentation recommandée</h2>
+        <ul>
+            <li><strong>Adaptateur secteur :</strong> 5V/3A minimum</li>
+            <li><strong>Batterie LiPo :</strong> 3.7V 2500-5000mAh (autonomie 6-24h)</li>
+            <li><strong>Consommation typique :</strong>
+                <ul>
+                    <li>Veille : ~50mA</li>
+                    <li>Transmission LTE-M : jusqu'à 2A (pics courts)</li>
+                    <li>Moyenne : 150-300mA</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</body>
+</html>

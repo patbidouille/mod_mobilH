@@ -1,0 +1,317 @@
+# 📘 Guide d'installation - Système de surveillance LTE-M
+
+## 📦 Bibliothèques Arduino requises
+
+Installez ces bibliothèques via le Gestionnaire de bibliothèques Arduino :
+
+### Bibliothèques obligatoires
+1. **TinyGSM** (pour le modem LTE-M)
+   - Version : ≥ 0.11.7
+   - Recherche : "TinyGSM"
+
+2. **PubSubClient** (pour MQTT)
+   - Version : ≥ 2.8
+   - Recherche : "PubSubClient" by Nick O'Leary
+
+3. **Adafruit BME280 Library** (capteur température/humidité)
+   - Version : ≥ 2.2.2
+   - Recherche : "Adafruit BME280"
+   - Note : Installe aussi "Adafruit Unified Sensor"
+
+4. **Adafruit TSL2561** (capteur de lumière)
+   - Version : ≥ 1.1.0
+   - Recherche : "Adafruit TSL2561"
+
+5. **PZEM-004T-v30** (compteur électrique)
+   - Version : ≥ 1.1.2
+   - Recherche : "PZEM-004Tv30"
+
+6. **ArduinoJson** (manipulation JSON)
+   - Version : ≥ 6.21.0
+   - Recherche : "ArduinoJson" by Benoit Blanchon
+
+7. **Preferences** (stockage ESP32)
+   - Incluse avec ESP32 core
+
+## 🔧 Configuration Arduino IDE
+
+### 1. Installation du support ESP32
+
+1. **Fichier** → **Préférences**
+2. Dans "URL de gestionnaire de cartes supplémentaires", ajoutez :
+   ```
+   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   ```
+3. **Outils** → **Type de carte** → **Gestionnaire de cartes**
+4. Recherchez "esp32" et installez "esp32 by Espressif Systems"
+
+### 2. Sélection de la carte
+
+- **Outils** → **Type de carte** → **ESP32 Arduino** → **ESP32 Dev Module**
+- **Outils** → **Upload Speed** → **115200**
+- **Outils** → **Partition Scheme** → **Default 4MB with spiffs**
+
+## 📁 Structure des fichiers
+
+Créez un dossier `surveillance_ltem` avec ces fichiers :
+
+```
+surveillance_ltem/
+├── surveillance_ltem.ino     (main.ino renommé)
+├── ltem_manager.h
+├── mqtt_manager.h
+├── sensor_manager.h
+├── json_builder.h
+└── storage_manager.h
+```
+
+**Important** : Le fichier principal `.ino` doit avoir le même nom que le dossier !
+
+## ⚙️ Configuration avant compilation
+
+### 1. Dans `surveillance_ltem.ino` (main)
+
+```cpp
+// Configuration MQTT - À MODIFIER
+const char* MQTT_SERVER = "votre-domaine.ddns.net"; // ou IP publique
+const int MQTT_PORT = 1883;
+const char* MQTT_USER = "mqtt_user";
+const char* MQTT_PASSWORD = "mqtt_password";
+
+// Configuration SMS - À MODIFIER
+const char* EMERGENCY_PHONE = "+33612345678"; // Format international
+```
+
+### 2. Vérification des pins
+
+Vérifiez que les pins correspondent à votre câblage dans `surveillance_ltem.ino` :
+
+```cpp
+#define PIN_PIR 14
+#define PIN_FIRE_ALARM 13
+#define PIN_ALARM_SWITCH 12
+#define PIN_AC_DETECT 15
+#define PIN_PZEM_RX 16
+#define PIN_PZEM_TX 17
+#define PIN_I2C_SDA 21
+#define PIN_I2C_SCL 22
+```
+
+## 🏠 Configuration Home Assistant
+
+### 1. Configuration MQTT
+
+Dans `configuration.yaml` :
+
+```yaml
+mqtt:
+  broker: localhost
+  port: 1883
+  username: mqtt_user
+  password: mqtt_password
+  discovery: true
+  discovery_prefix: homeassistant
+```
+
+### 2. Redirection de port Freebox
+
+1. Interface Freebox → **Paramètres**
+2. **Mode avancé** → **Redirections de ports**
+3. Créer une nouvelle redirection :
+   - **Port externe** : 1883
+   - **Port interne** : 1883
+   - **IP de destination** : Adresse IP locale de votre Home Assistant
+   - **Protocole** : TCP
+
+### 3. DynDNS (optionnel mais recommandé)
+
+Si votre IP publique change, utilisez un service DynDNS gratuit :
+
+- **No-IP** : https://www.noip.com/
+- **DuckDNS** : https://www.duckdns.org/
+
+Exemple de configuration :
+1. Créez un compte No-IP
+2. Créez un hostname : `maison.ddns.net`
+3. Configurez la Freebox pour mettre à jour l'IP automatiquement
+4. Utilisez `maison.ddns.net` comme `MQTT_SERVER`
+
+## 📱 Configuration carte SIM The Things Mobile
+
+### 1. Activation
+
+1. Insérez la carte SIM dans le module T-A7670E
+2. Activez la carte sur : https://www.thethingsmobile.com/
+3. Rechargez du crédit (minimum 10€)
+
+### 2. Tarification
+
+- ~0,10€ / MB en Europe
+- Consommation estimée : 4-5 MB/mois
+- Coût mensuel : ~0,50€
+
+### 3. Optimisation consommation
+
+Le code envoie automatiquement :
+- **Toutes les 10 min** si alimentation secteur présente
+- **Toutes les 60 min** si sur batterie
+- **Immédiatement** en cas d'alerte (PIR ou incendie)
+
+## 🔌 Alimentation
+
+### Configuration recommandée
+
+- **Adaptateur secteur** : 5V / 3A minimum
+- **Batterie de secours** : LiPo 3.7V 2500-5000mAh
+- **Consommation moyenne** : 150-300mA
+- **Pics transmission** : jusqu'à 2A (courts)
+
+### Circuit de détection 220V
+
+**⚠️ DANGER : Manipulation par personne qualifiée uniquement !**
+
+Utilisez un optocoupler PC817 pour isoler galvaniquement le 220V :
+
+```
+220V AC → Fusible 100mA → Résistances → PC817 LED
+PC817 Transistor → 3.3V (via 10kΩ) → GPIO 15
+```
+
+## 🚀 Première utilisation
+
+### 1. Upload du code
+
+1. Connectez le module via USB
+2. Sélectionnez le bon port COM
+3. Cliquez sur **Téléverser**
+4. Attendez "Hard resetting via RTS pin..."
+
+### 2. Vérification via moniteur série
+
+1. **Outils** → **Moniteur série**
+2. Vitesse : **115200 bauds**
+3. Vous devriez voir :
+
+```
+╔════════════════════════════════════════╗
+║  Système de surveillance LTE-M        ║
+║  T-A7670E + Home Assistant            ║
+╚════════════════════════════════════════╝
+
+📦 Initialisation stockage...
+✅ Stockage initialisé (Démarrage #1)
+🔧 Initialisation capteurs...
+  BME280... ✅
+  TSL2561... ✅
+  PZEM-004T... ✅
+
+📡 Initialisation LTE-M...
+⚙️  Initialisation du modem T-A7670E...
+✅ Modem répondant
+...
+```
+
+### 3. Vérification des capteurs
+
+Si un capteur ne se détecte pas :
+- Vérifiez le câblage
+- Vérifiez les adresses I2C (scanner I2C)
+- Pour le PZEM : vérifiez qu'il est alimenté ET qu'il mesure du 220V
+
+## 🐛 Dépannage
+
+### Le modem ne répond pas
+
+1. Vérifiez les connexions RX/TX (inversées ?)
+2. Appuyez physiquement sur le bouton PWRKEY 1 seconde
+3. Vérifiez l'alimentation 5V/3A
+
+### Pas de connexion LTE-M
+
+1. Vérifiez que la carte SIM est activée
+2. Vérifiez la couverture LTE-M dans votre zone
+3. Attendez 2-3 minutes (enregistrement peut être long)
+4. Regardez le LED réseau du module
+
+### MQTT ne se connecte pas
+
+1. Vérifiez que le port 1883 est bien redirigé
+2. Testez depuis un téléphone en 4G : `mqtt://votre-ip:1883`
+3. Vérifiez les credentials MQTT
+4. Vérifiez les logs de Home Assistant
+
+### Capteur non détecté
+
+**BME280 / TSL2561 (I2C)** :
+```cpp
+// Test scanner I2C dans setup()
+Wire.begin(21, 22);
+for(byte i = 1; i < 127; i++) {
+  Wire.beginTransmission(i);
+  if(Wire.endTransmission() == 0) {
+    Serial.printf("Trouvé: 0x%02X\n", i);
+  }
+}
+```
+
+**PZEM-004T** :
+- Vérifiez qu'il est alimenté en 5V
+- Vérifiez qu'il mesure du 220V (sinon affiche NaN)
+- Testez avec un autre appareil sur la ligne mesurée
+
+## 📊 Surveillance dans Home Assistant
+
+Après connexion réussie, vous verrez automatiquement ces entités :
+
+### Capteurs numériques
+- `sensor.temperature` (°C)
+- `sensor.humidite` (%)
+- `sensor.pression` (hPa)
+- `sensor.luminosite` (lux)
+- `sensor.tension` (V)
+- `sensor.courant` (A)
+- `sensor.puissance` (W)
+- `sensor.energie` (kWh)
+
+### Capteurs binaires
+- `binary_sensor.detecteur_mouvement`
+- `binary_sensor.detecteur_incendie`
+- `binary_sensor.mode_alarme`
+- `binary_sensor.alimentation_secteur`
+
+## 📈 Consommation de données estimée
+
+| Scénario | Fréquence | Données/mois | Coût/mois |
+|----------|-----------|--------------|-----------|
+| Secteur uniquement | 10 min | ~4 MB | ~0,40€ |
+| Batterie uniquement | 60 min | ~0,7 MB | ~0,07€ |
+| Mixte (8h batterie) | Variable | ~2,5 MB | ~0,25€ |
+| + 5 alertes/jour | Immédiat | +0,3 MB | +0,03€ |
+
+## 🔐 Sécurité
+
+### Recommandations
+
+1. **Changez tous les mots de passe par défaut**
+2. **Utilisez MQTT avec TLS (port 8883)** si possible
+3. **Activez l'authentification forte sur HA**
+4. **Limitez l'accès au port MQTT** (whitelist IP si possible)
+5. **Activez le firewall de la Freebox**
+6. **Utilisez un VPN** pour un accès plus sécurisé
+
+## 📞 Support
+
+En cas de problème :
+1. Vérifiez le moniteur série (115200 bauds)
+2. Lancez les diagnostics : appelez `ltem.runDiagnostics()`
+3. Vérifiez les statistiques : appelez `storage.printStatistics()`
+4. Consultez les logs de Home Assistant
+
+## 🎯 Prochaines améliorations possibles
+
+- Mode deep sleep pour économie batterie
+- Envoi par batch pour réduire les données
+- Interface web locale de configuration
+- Alertes par webhook (Telegram, etc.)
+- Graphiques de tendances locaux
+- Calibration automatique des capteurs

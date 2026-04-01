@@ -1,0 +1,348 @@
+# 🎨 Guide LED RGB et Deep Sleep
+
+## 📌 Nouveautés implémentées
+
+### ✅ Connexions non bloquantes
+- Le programme ne se bloque plus lors des tentatives de connexion
+- Timeout de 30 secondes par tentative
+- La boucle principale continue même pendant la connexion
+- Retry automatique toutes les minutes si échec
+
+### ✅ LED RGB indicatrice d'état
+- Affichage visuel de l'état du système
+- Fonctionne uniquement sous alimentation secteur (économie batterie)
+- Différentes couleurs selon l'état
+
+### ✅ Deep Sleep sur batterie
+- Économie maximale d'énergie en mode batterie
+- Réveil automatique par timer ou par alarme
+- Conservation de l'état en mémoire
+
+---
+
+## 🎨 LED RGB - États et couleurs
+
+### Câblage LED RGB
+
+```
+LED RGB commune cathode (ou anode) :
+  R (Rouge)  → GPIO 25
+  G (Vert)   → GPIO 26  
+  B (Bleu)   → GPIO 27
+  GND/VCC    → GND (ou 3.3V pour commune anode)
+```
+
+**Configuration dans le code :**
+```cpp
+#define PIN_LED_R 25
+#define PIN_LED_G 26
+#define PIN_LED_B 27
+#define LED_COMMON_ANODE false  // Changer en true si LED commune anode
+```
+
+### États de la LED
+
+| État | Couleur | Signification |
+|------|---------|---------------|
+| **LED_OFF** | 🔴 Éteinte | Sur batterie (économie d'énergie) |
+| **LED_CONNECTING_LTEM** | 🔵 Bleu clignotant | Connexion au réseau LTE-M en cours |
+| **LED_CONNECTING_MQTT** | 🔵🟢 Cyan clignotant | Connexion au broker MQTT en cours |
+| **LED_CONNECTED_ALARM_OFF** | 🟢 Vert fixe | Connecté à HA, alarme désactivée |
+| **LED_CONNECTED_ALARM_ON** | 🟠 Orange fixe | Connecté à HA, alarme activée |
+| **LED_ERROR** | 🔴 Rouge clignotant lent | Erreur de connexion |
+| **LED_ALERT** | 🔴 Rouge clignotant rapide | Alarme déclenchée (PIR ou incendie) |
+
+### Schéma de fonctionnement
+
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│  Démarrage                                  │
+│      ↓                                      │
+│  🔵 Connexion LTE-M (bleu clignotant)       │
+│      ↓                                      │
+│  🔵🟢 Connexion MQTT (cyan clignotant)       │
+│      ↓                                      │
+│  🟢 Connecté - Alarme OFF (vert)            │
+│  🟠 Connecté - Alarme ON (orange)           │
+│      ↓                                      │
+│  🔴 Alerte si PIR/Incendie (rouge rapide)   │
+│      ↓                                      │
+│  Retour à l'état précédent après 5-10s      │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 💤 Deep Sleep - Fonctionnement
+
+### Principe
+
+Le deep sleep permet d'économiser énormément d'énergie en mettant l'ESP32 en sommeil profond :
+- **Consommation normale** : ~150-300mA
+- **Consommation deep sleep** : ~10µA (0.01mA !)
+- **Économie** : ~99.99% d'énergie
+
+### Quand le deep sleep s'active
+
+Le système entre en deep sleep **UNIQUEMENT** quand :
+1. ✅ Alimentation sur **batterie** (pas de secteur)
+2. ✅ Données envoyées avec succès
+3. ✅ Pas d'alerte en cours
+
+### Sources de réveil
+
+Le système peut se réveiller de 3 manières :
+
+#### 1. Timer (réveil programmé)
+- **Sur secteur** : réveil toutes les 10 minutes
+- **Sur batterie** : réveil toutes les 60 minutes
+- Permet l'envoi périodique des données
+
+#### 2. Détecteur PIR (GPIO 14)
+- Réveil immédiat sur détection de mouvement
+- Permet l'alerte intrusion même en deep sleep
+- Configuration : `esp_sleep_enable_ext0_wakeup(PIN_PIR, 1)`
+
+#### 3. Détecteur incendie (GPIO 13)
+- Réveil immédiat sur alarme incendie
+- Permet l'alerte urgente même en deep sleep
+- Configuration : `esp_sleep_enable_ext1_wakeup()`
+
+### Cycle de fonctionnement
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│  1. Réveil (timer ou alarme)                    │
+│      ↓                                          │
+│  2. Connexion LTE-M + MQTT                      │
+│      ↓                                          │
+│  3. Lecture capteurs                            │
+│      ↓                                          │
+│  4. Envoi données MQTT                          │
+│      ↓                                          │
+│  5. Envoi SMS si alerte                         │
+│      ↓                                          │
+│  6. Si sur batterie → Deep Sleep                │
+│     Si sur secteur → Continue en boucle         │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Exemple de timeline sur batterie
+
+```
+00:00 → Réveil, envoi données, sleep 60 min
+01:00 → Réveil, envoi données, sleep 60 min
+01:30 → PIR déclenché ! Réveil, envoi alerte + SMS, sleep 60 min
+02:30 → Réveil, envoi données, sleep 60 min
+...
+```
+
+---
+
+## ⚙️ Configuration
+
+### Modifier les durées de sleep
+
+Dans `surveillance_ltem.ino` :
+
+```cpp
+// Durées en microsecondes (1 seconde = 1 000 000 µs)
+#define SLEEP_TIME_BATTERY 3600000000ULL  // 1 heure
+#define SLEEP_TIME_AC 600000000ULL        // 10 minutes
+```
+
+Exemples de calcul :
+- 30 minutes = `30 * 60 * 1000000 = 1800000000ULL`
+- 2 heures = `2 * 3600 * 1000000 = 7200000000ULL`
+- 5 minutes = `5 * 60 * 1000000 = 300000000ULL`
+
+### Désactiver le deep sleep
+
+Si vous voulez désactiver complètement le deep sleep :
+
+```cpp
+void enterDeepSleep() {
+  Serial.println("⚠️ Deep sleep désactivé en mode debug");
+  return; // Ne jamais entrer en sleep
+}
+```
+
+### Désactiver la LED
+
+Si vous n'avez pas de LED RGB :
+
+```cpp
+void updateLED() {
+  // Fonction vide, rien ne se passe
+  return;
+}
+```
+
+---
+
+## 🔋 Autonomie sur batterie
+
+### Calcul théorique
+
+**Sans deep sleep :**
+- Consommation : ~200mA
+- Batterie 3000mAh : 3000 / 200 = **15 heures**
+
+**Avec deep sleep :**
+- Actif 1 min/heure : 200mA × 1/60 = 3.3mA
+- Sleep 59 min/heure : 0.01mA × 59/60 = 0.01mA
+- Moyenne : **~3.4mA**
+- Batterie 3000mAh : 3000 / 3.4 = **880 heures** (~37 jours)
+
+### Autonomie réelle estimée
+
+Avec une batterie LiPo 3.7V 5000mAh :
+- **Sans deep sleep** : ~24h
+- **Avec deep sleep** : **30-60 jours** (selon fréquence alertes)
+
+---
+
+## 🐛 Débogage
+
+### Moniteur série au réveil
+
+À chaque réveil, le système affiche la raison :
+
+```
+⏰ Réveil par timer
+⏰ Réveil par alarme PIR
+⏰ Réveil par alarme incendie
+🔌 Démarrage à froid
+```
+
+### Vérifier l'état de la LED
+
+Si la LED ne fonctionne pas :
+
+1. **Vérifier le type de LED** (commune anode ou cathode)
+2. **Tester avec ce code dans setup()** :
+```cpp
+setLED(255, 0, 0); delay(1000); // Rouge
+setLED(0, 255, 0); delay(1000); // Vert
+setLED(0, 0, 255); delay(1000); // Bleu
+setLED(0, 0, 0);                // Éteint
+```
+
+3. **Vérifier les résistances** : Ajoutez 220Ω en série avec chaque pin
+
+### Vérifier le deep sleep
+
+Le moniteur série s'arrête lors du deep sleep (normal). Pour vérifier :
+
+```cpp
+// Avant esp_deep_sleep_start()
+Serial.println("Entrée en sleep dans 5 secondes...");
+delay(5000);
+```
+
+### Désactiver temporairement
+
+Pour tester sans deep sleep :
+
+```cpp
+if (!acPowerPresent) {
+  Serial.println("💤 Mode batterie mais sleep désactivé (debug)");
+  // Ne pas appeler enterDeepSleep();
+}
+```
+
+---
+
+## 📊 Statistiques stockées
+
+Le système garde en mémoire :
+- Nombre de démarrages
+- Temps de fonctionnement total
+- Nombre d'alertes incendie
+- Nombre de détections PIR
+- État de l'alimentation
+
+Pour voir les stats :
+```cpp
+storage.printStatistics();
+```
+
+---
+
+## ⚠️ Limitations
+
+### Deep Sleep
+
+1. **Perte de connexion** : À chaque réveil, reconnexion nécessaire (~10-20s)
+2. **Latence** : Délai entre événement et envoi (max 1 heure sur batterie)
+3. **SMS seulement en alerte** : Les SMS ne sont envoyés que lors d'alarmes
+
+### LED RGB
+
+1. **Consommation** : ~30-60mA selon luminosité
+2. **Uniquement sur secteur** : Éteinte sur batterie pour économie
+3. **Visibilité** : Peut nécessiter un diffuseur selon type de LED
+
+---
+
+## 🚀 Optimisations possibles
+
+### Réduire la consommation encore plus
+
+1. **Désactiver Bluetooth/WiFi ESP32** :
+```cpp
+void setup() {
+  btStop();
+  WiFi.mode(WIFI_OFF);
+}
+```
+
+2. **Réduire fréquence CPU** :
+```cpp
+setCpuFrequencyMhz(80); // Au lieu de 240MHz
+```
+
+3. **Optimiser durée d'activité** :
+- Lire tous les capteurs en parallèle
+- Envoyer un seul gros message au lieu de plusieurs
+- Réduire timeout de connexion
+
+### Améliorer la réactivité
+
+1. **Réduire intervalle sur batterie** :
+```cpp
+#define SLEEP_TIME_BATTERY 1800000000ULL  // 30 min au lieu de 60
+```
+
+2. **Mode hybride** : Sleep court la nuit, normal le jour
+
+3. **Prioriser les alarmes** : Envoi SMS immédiat même si MQTT échoue
+
+---
+
+## 📝 Checklist d'installation
+
+- [ ] LED RGB câblée sur GPIO 25, 26, 27
+- [ ] Type de LED configuré (anode/cathode)
+- [ ] Circuit détection 220V fonctionnel
+- [ ] Deep sleep testé et validé
+- [ ] Autonomie batterie vérifiée
+- [ ] Réveil par alarmes testé
+- [ ] LED affiche les bons états
+- [ ] SMS d'alerte reçus
+
+---
+
+## 🎓 Résumé
+
+✅ **Connexions non bloquantes** : Le système reste réactif
+✅ **LED RGB** : Indication visuelle de l'état (secteur uniquement)  
+✅ **Deep Sleep** : Économie maximale sur batterie (x60 autonomie)
+✅ **Réveil intelligent** : Timer + PIR + Incendie
+✅ **Alertes garanties** : Réveil immédiat sur détection
+
+Le système est maintenant optimisé pour une **utilisation autonome prolongée** tout en gardant une **réactivité maximale** en cas d'alerte !

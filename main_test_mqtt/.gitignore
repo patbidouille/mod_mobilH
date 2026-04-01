@@ -1,0 +1,33 @@
+# Fichiers secrets (IMPORTANT !)
+**/secrets.h
+
+# Fichiers macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Fichiers Windows
+Thumbs.db
+Desktop.ini
+
+# Fichiers de compilation Arduino
+*.bin
+*.elf
+*.hex
+*.map
+build/
+
+# Fichiers IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.old
+*.txt
+*.copie
+*swp
+
